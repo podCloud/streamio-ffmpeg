@@ -32,8 +32,8 @@ module FFMPEG
       command = [FFMPEG.ffprobe_binary]
 
       if remote?
-        if opts[:user_agent].is_a?(String)
-          ua = opts[:user_agent].strip
+        if @http_opts[:user_agent].is_a?(String)
+          ua = @http_opts[:user_agent].strip
           command += ["-user_agent", ua] unless ua.empty?
         elsif FFMPEG.user_agent
           command += ["-user_agent", FFMPEG.user_agent]

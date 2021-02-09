@@ -13,9 +13,9 @@ module FFMPEG
 
     UNSUPPORTED_CODEC_PATTERN = /^Unsupported codec with id (\d+) for input stream (\d+)$/
 
-    def initialize(path, opts = {})
+    def initialize(path, http_opts = {})
       @path = path
-      @opts = opts
+      @http_opts = http_opts
 
       if remote?
         @head = head
@@ -31,7 +31,14 @@ module FFMPEG
       # ffmpeg will output to stderr
       command = [FFMPEG.ffprobe_binary]
 
-      command += ["-user_agent", FFMPEG.user_agent] if remote? and FFMPEG.user_agent
+      if remote?
+        if opts[:user_agent].is_a?(String)
+          ua = opts[:user_agent].strip
+          command += ["-user_agent", ua] unless ua.empty?
+        elsif FFMPEG.user_agent
+          command += ["-user_agent", FFMPEG.user_agent]
+        end
+      end
 
       command += ['-i', path]
       command += %w(-print_format json -show_format -show_streams -show_error)
@@ -206,12 +213,12 @@ module FFMPEG
                                end
     end
 
-    def transcode(output_file, options = EncodingOptions.new, transcoder_options = {}, &block)
-      Transcoder.new(self, output_file, options, transcoder_options).run &block
+    def transcode(output_file, options = EncodingOptions.new, transcoder_options = {}, http_opts = @http_opts, &block)
+      Transcoder.new(self, output_file, options, transcoder_options, http_opts).run &block
     end
 
-    def screenshot(output_file, options = EncodingOptions.new, transcoder_options = {}, &block)
-      Transcoder.new(self, output_file, options.merge(screenshot: true), transcoder_options).run &block
+    def screenshot(output_file, options = EncodingOptions.new, transcoder_options = {}, http_opts = @http_opts, &block)
+      Transcoder.new(self, output_file, options.merge(screenshot: true), transcoder_options, http_opts).run &block
     end
 
     protected
@@ -241,20 +248,25 @@ module FFMPEG
       output.force_encoding("ISO-8859-1")
     end
 
-    def head(location=@path, limit=FFMPEG.max_http_redirect_attempts, opts=@opts)
+    def head(location=@path, limit=FFMPEG.max_http_redirect_attempts, opts=@http_opts)
       url = URI(location)
       return unless url.path
 
       http = Net::HTTP.new(url.host, url.port)
       http.use_ssl = url.port == 443
 
-      if opts[:ssl_verify_mode] == :none
-        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      unless opts[:ssl_verify_mode] == :peer
+        if FFMPEG.ssl_verify_mode == :none || opts[:ssl_verify_mode] == :none
+          http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        end
       end
 
       headers = {}
 
-      if FFMPEG.user_agent
+      if opts[:user_agent].is_a?(String)
+        ua = opts[:user_agent].strip
+        headers = {'User-Agent': ua} unless ua.empty?
+      elsif FFMPEG.user_agent
         headers = {'User-Agent': FFMPEG.user_agent}
       end
 

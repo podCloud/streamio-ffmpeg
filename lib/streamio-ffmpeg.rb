@@ -90,14 +90,33 @@ module FFMPEG
     @max_http_redirect_attempts = v
   end
 
+  # Set the ssl verify mode of http requests.
+  # It is only used for ruby precheck request.
+  #
+  # @param [Symbol] :none or :peer (default)
+  # @return [String] The symbol set
+  # @raise ArgumentError if mode is not one of :none or :peer
+  def self.ssl_verify_mode=(mode)
+    raise ArgumentError, 'mode must be a symbol' if mode && !mode.is_a?(Symbol)
+    raise ArgumentError, 'mode must be one of :none or :peer' if mode != :none && mode != :peer
+    @ssl_verify_mode = mode
+  end
+
+  # Get the user agent of http requests.
+  #
+  # @return [String] the user agent you set
+  def self.ssl_verify_mode
+    @ssl_verify_mode
+  end
+
   # Set the user agent of http requests.
   # An empty string is ignored
   #
   # @param [String] the user agent
   # @return [String] the user agent you set
-  # @raise ArgumentError if user_agent is not nil and is not a string
+  # @raise ArgumentError if ua is not nil and is not a string
   def self.user_agent=(ua)
-    raise ArgumentError, 'user_agent must be a string' if ua && !ua.is_a?(String)
+    raise ArgumentError, 'ua must be a string' if ua && !ua.is_a?(String)
     @user_agent = "#{ua}".strip
     @user_agent = nil if @user_agent.empty?
   end

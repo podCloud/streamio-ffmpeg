@@ -10,7 +10,7 @@ module FFMPEG
       attr_accessor :timeout
     end
 
-    def initialize(input, output_file, options = EncodingOptions.new, transcoder_options = {})
+    def initialize(input, output_file, options = EncodingOptions.new, transcoder_options = {}, http_opts = {})
       if input.is_a?(FFMPEG::Movie)
         @movie = input
         @input = input.path
@@ -35,7 +35,11 @@ module FFMPEG
       end
 
       user_agent = []
-      if FFMPEG.user_agent
+      ua = http_opts[:user_agent]
+      if ua.is_a?(String)
+        ua.strip!
+        user_agent = ["-user_agent", ua] unless ua.empty?
+      elsif FFMPEG.user_agent
         user_agent = ["-user_agent", FFMPEG.user_agent]
       end
 
@@ -98,7 +102,7 @@ module FFMPEG
 
         @errors << "ffmpeg returned non-zero exit code" unless wait_thr.value.success?
 
-        rescue Timeout::Error => e
+        rescue Timeout::Error
           FFMPEG.logger.error "Process hung...\n@command\n#{command}\nOutput\n#{@output}\n"
           raise Error, "Process hung. Full output: #{@output}"
         end

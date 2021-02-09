@@ -13,8 +13,9 @@ module FFMPEG
 
     UNSUPPORTED_CODEC_PATTERN = /^Unsupported codec with id (\d+) for input stream (\d+)$/
 
-    def initialize(path)
+    def initialize(path, opts = {})
       @path = path
+      @opts = opts
 
       if remote?
         @head = head
@@ -28,7 +29,13 @@ module FFMPEG
       @path = path
 
       # ffmpeg will output to stderr
-      command = [FFMPEG.ffprobe_binary, '-i', path, *%w(-print_format json -show_format -show_streams -show_error)]
+      command = [FFMPEG.ffprobe_binary]
+
+      command += ["-user_agent", FFMPEG.user_agent] if remote? and FFMPEG.user_agent
+
+      command += ['-i', path]
+      command += %w(-print_format json -show_format -show_streams -show_error)
+
       std_output = ''
       std_error = ''
 
@@ -234,24 +241,35 @@ module FFMPEG
       output.force_encoding("ISO-8859-1")
     end
 
-    def head(location=@path, limit=FFMPEG.max_http_redirect_attempts)
+    def head(location=@path, limit=FFMPEG.max_http_redirect_attempts, opts=@opts)
       url = URI(location)
       return unless url.path
 
       http = Net::HTTP.new(url.host, url.port)
       http.use_ssl = url.port == 443
-      response = http.request_head(url.request_uri)
+
+      if opts[:ssl_verify_mode] == :none
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      end
+
+      headers = {}
+
+      if FFMPEG.user_agent
+        headers = {'User-Agent': FFMPEG.user_agent}
+      end
+
+      response = http.request_head(url.request_uri, headers)
 
       case response
         when Net::HTTPRedirection then
           raise FFMPEG::HTTPTooManyRequests if limit == 0
           new_uri = url + URI(response['Location'])
 
-          head(new_uri, limit - 1)
+          head(new_uri, limit - 1, opts)
         else
           response
       end
-    rescue SocketError, Errno::ECONNREFUSED => e
+    rescue SocketError, Errno::ECONNREFUSED
       nil
     end
   end

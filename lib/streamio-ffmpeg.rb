@@ -90,6 +90,25 @@ module FFMPEG
     @max_http_redirect_attempts = v
   end
 
+  # Set the user agent of http requests.
+  # An empty string is ignored
+  #
+  # @param [String] the user agent
+  # @return [String] the user agent you set
+  # @raise ArgumentError if user_agent is not nil and is not a string
+  def self.user_agent=(ua)
+    raise ArgumentError, 'user_agent must be a string' if ua && !ua.is_a?(String)
+    @user_agent = "#{ua}".strip
+    @user_agent = nil if @user_agent.empty?
+  end
+
+  # Get the user agent of http requests.
+  #
+  # @return [String] the user agent you set
+  def self.user_agent
+    @user_agent
+  end
+
   # Cross-platform way of finding an executable in the $PATH.
   #
   #   which('ruby') #=> /usr/bin/ruby

@@ -34,7 +34,12 @@ module FFMPEG
         input_options.each { |k, v| iopts += ['-' + k.to_s, v] }
       end
 
-      @command = [FFMPEG.ffmpeg_binary, '-y', *iopts, '-i', @input, *@raw_options.to_a, @output_file]
+      user_agent = []
+      if FFMPEG.user_agent
+        user_agent = ["-user_agent", FFMPEG.user_agent]
+      end
+
+      @command = [FFMPEG.ffmpeg_binary, '-y', *user_agent, *iopts, '-i', @input, *@raw_options.to_a, @output_file]
     end
 
     def run(&block)

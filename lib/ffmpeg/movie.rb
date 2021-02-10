@@ -18,9 +18,11 @@ module FFMPEG
       @http_opts = http_opts
 
       if remote?
-        @head = head
-        unless @head.is_a?(Net::HTTPSuccess)
-          raise Errno::ENOENT, "the URL '#{path}' does not exist or is not available (response code: #{@head.code})"
+        unless http_opts[:skip_remote_precheck]
+          @head = head
+          unless @head.is_a?(Net::HTTPSuccess)
+            raise Errno::ENOENT, "the URL '#{path}' does not exist or is not available (response code: #{@head.code})"
+          end
         end
       else
         raise Errno::ENOENT, "the file '#{path}' does not exist" unless File.exist?(path)
@@ -71,6 +73,8 @@ module FFMPEG
         @container = @metadata[:format][:format_name]
 
         @duration = @metadata[:format][:duration].to_f
+
+        @size = @metadata[:format][:size].to_i
 
         @time = @metadata[:format][:start_time].to_f
 
@@ -192,11 +196,7 @@ module FFMPEG
     end
 
     def size
-      if local?
-        File.size(@path)
-      else
-        @head.content_length
-      end
+      @size
     end
 
     def audio_channel_layout
